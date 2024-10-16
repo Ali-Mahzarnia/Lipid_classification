@@ -3,7 +3,7 @@ library(pROC)
 library(glmnet)
 library(parallel)
 
-data <- read.csv("Lipid_mom_SGA.csv")
+data <- read.csv("Lipid_mom_PTB.csv")
 X_feature = as.matrix(data[,11:(dim(data)[2]-1)]) # Except for age
 age = data$AgeDelivery
 bmi = data$BMI
@@ -12,7 +12,7 @@ GAUltrasound = data$GAUltrasound
 multi_birth = data$Multiple.Birth  
 multi_birth[is.na(multi_birth)] = 1
 
-y = data$SGA_weight
+y = data$PTB
 
 
 X = cbind(age,bmi,sex,GAUltrasound, multi_birth,X_feature) # combine the age and features
