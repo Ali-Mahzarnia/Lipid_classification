@@ -7,7 +7,7 @@ Created on Tue Oct 15 16:51:55 2024
 """
 
 import os
-os.chdir("/Users/amahzarn/Desktop/oct24/lipids_binary_sga/")
+os.chdir("/Users/amahzarn/Desktop/oct24/lipids_binary_PTB/")
 
 import pandas as pd
 import numpy as np
@@ -23,7 +23,7 @@ np.random.seed(42)
 tf.random.set_seed(42)  
 
 # Load the data from a CSV file
-data = pd.read_csv('Lipid_mom_SGA.csv')
+data = pd.read_csv('Lipid_mom_PTB.csv')
 
 # Extract BMI, Sex, AgeDelivery, GAUltrasound, Multiple.Birth, columns, and separate them from the regular features
 data['Multiple.Birth'] = data['Multiple.Birth'].fillna(1)
@@ -32,7 +32,7 @@ X_bmi_sex_age = data[bmi_sex_age_cols].values  # Features we don't want to penal
 
 # Select remaining features (from column 11 to the last column, excluding target column)
 X_rest = data.iloc[:, 10:-1].values  # Regular features to be penalized
-y = data.iloc[:, -1].values  # Target: SGA
+y = data.iloc[:, -1].values  # Target: PTB
 
 
 
