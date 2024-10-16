@@ -1,22 +1,31 @@
-
 library(pROC)
 library(glmnet)
 library(parallel)
+library(xlsx)
 
 data <- read.csv("Lipid_mom_PTB.csv")
-X_feature = as.matrix(data[,11:(dim(data)[2]-1)]) # Except for age
+
+data$Multiple.Birth[is.na(data$Multiple.Birth)] = 1
+# Convert categorical variables to factors
+data$Sex <- as.factor(data$Sex)
+data$Multiple.Birth <- as.factor(data$Multiple.Birth)
+
+# Create the design matrix with dummy variables
+X_feature = as.matrix(data[, 11:(dim(data)[2]-1)]) # Except for PTB
 age = data$AgeDelivery
 bmi = data$BMI
-sex = data$Sex
 GAUltrasound = data$GAUltrasound
-multi_birth = data$Multiple.Birth  
+multi_birth = data$Multiple.Birth
 multi_birth[is.na(multi_birth)] = 1
 
+# Create dummy variables
+dummy_sex <- model.matrix(~ Sex - 1, data)  # Dummy variables for sex
+dummy_multi_birth <- model.matrix(~ Multiple.Birth - 1, data)  # Dummy variables for multi_birth
+
+
+#Combine features
 y = data$PTB
-
-
-X = cbind(age,bmi,sex,GAUltrasound, multi_birth,X_feature) # combine the age and features
-
+X = cbind(age, bmi, dummy_sex, dummy_multi_birth, GAUltrasound, X_feature)  # Combine all features
 
 n_trials = 100
 AUCs= rep(0,n_trials )
@@ -37,11 +46,11 @@ cv_results <- mclapply(alphas, function(alpha) {
   while (is.null(result)) {
     tryCatch({
       # Run the cross-validation for the current alpha
-      cvfit <- cv.glmnet(X[train.index,], y[train.index], family = "binomial", alpha = alpha, 
-                         nfolds = 3, penalty.factor = c(0, 0, 0, 0, 0, rep(1, ncol(X) - 5)), 
+      cvfit <- cv.glmnet(X[train.index,], y[train.index], family = "binomial", alpha = alpha, type.measure = 'auc', 
+                         nfolds = 3, penalty.factor = c(rep(0,8), rep(1, ncol(X) - 8)), 
                          nlambda = 10, thresh = 1e-3)
-      # Extract the minimum cross-validation error
-      result <- min(cvfit$cvm)
+      # Extract the minimum cross-validation error, max auc
+      result <- max(cvfit$cvm)
       
     }, error = function(e) {
       result <- NULL  # Ensure the loop continues until no error
@@ -52,7 +61,7 @@ cv_results <- mclapply(alphas, function(alpha) {
 
 
 
-best_alpha <- alphas[which.min(cv_results)] # selecting best alpha
+best_alpha <- alphas[which.max(cv_results)] # selecting best alpha
 best_alphas[trial] = best_alpha
 
 cvfit <- NULL
@@ -60,7 +69,7 @@ while (is.null(cvfit)) {
   tryCatch({
     # Run the cross-validation for the best alpha
     cvfit <- cv.glmnet(X[train.index,], y[train.index], family = "binomial", 
-                       alpha = best_alpha, penalty.factor = c(0, 0, 0, 0, 0, rep(1, ncol(X) - 5)), 
+                       alpha = best_alpha, type.measure = 'auc' ,penalty.factor = c(rep(0,8), rep(1, ncol(X) - 8)), 
                        nfolds = 5)
     
   }, error = function(e) {
@@ -71,7 +80,7 @@ while (is.null(cvfit)) {
 
 model <- glmnet(X[train.index,], y[train.index], family = "binomial", 
                 alpha = best_alpha, lambda = cvfit$lambda.min, 
-                penalty.factor = c(0, 0, 0, 0, 0, rep(1, ncol(X) - 5)) )
+                penalty.factor = c(rep(0,8), rep(1, ncol(X) -8)) )
 
 
 # Update feature frequency based on non-zero coefficients
@@ -105,12 +114,12 @@ cat("with 95% CI of (" , round(percentiles[1],3), ",", round(percentiles[2],3),"
 # Prepare data for Excel
 feature_names <- colnames(X)  # Get feature names
 selected_features_data <- data.frame(
-  Feature = feature_names[feature_frequency > 70],
-  Frequency = feature_frequency[feature_frequency > 70]
+  Feature = feature_names[feature_frequency > 50],
+  Frequency = feature_frequency[feature_frequency > 50]
 )
 
 # Write to Excel file
-output_file <- "EN_Lipid_features_70.xlsx"
+output_file <- "EN_Lipid_features_50.xlsx"
 write.xlsx(selected_features_data, file = output_file)
 
 # Write best alphas to a separate Excel file
