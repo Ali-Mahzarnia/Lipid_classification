@@ -11,7 +11,7 @@ data$Sex <- as.factor(data$Sex)
 data$Multiple.Birth <- as.factor(data$Multiple.Birth)
 
 # Create the design matrix with dummy variables
-X_feature = as.matrix(data[, 11:(dim(data)[2]-1)]) # Except for PTB
+X_feature = as.matrix(data[, 11:(dim(data)[2]-1)]) # Except for SGA
 age = data$AgeDelivery
 bmi = data$BMI
 GAUltrasound = data$GAUltrasound
@@ -104,28 +104,60 @@ cat("Trial", trial, " with AUC: " ,round(auc_value,3), "\n")
 
 }
 
+
+
+# Write AUC to Excel file
+output_file <- "EN_Lipid_SGA_AUCs.xlsx"
+write.xlsx(AUCs, file = output_file)
+
+
 percentiles <- quantile(AUCs, probs = c(0.025, 0.975)) ## CI
 cat("Average AUC:", mean(AUCs), "\n")
-cat("with 95% CI of (" , round(percentiles[1],3), ",", round(percentiles[2],3),")" )
+cat("with Percentile 95% CI of (", round(percentiles[1], 3), ",", round(percentiles[2], 3), ")\n")
 
 
+mean_auc <- mean(AUCs) # mean of AUC
+std_dev_auc <- sd(AUCs) # sd of AUCs
+n <- length(AUCs) # number of AUCs
+z_critical <- qnorm(0.975)  # 95% confidence interval
+# Compute the margin of error and confidence interval
+margin_error <- z_critical * (std_dev_auc / sqrt(n))
+cat("Average AUC:", mean_auc, "\n95% Z-interval: (", round(mean_auc - margin_error, 3), ",", round(mean_auc + margin_error, 3), ")\n")
 
 
 # Prepare data for Excel
 feature_names <- colnames(X)  # Get feature names
 selected_features_data <- data.frame(
-  Feature = feature_names[feature_frequency > 50],
-  Frequency = feature_frequency[feature_frequency > 50]
+  Feature = feature_names[feature_frequency > 0],
+  Frequency = feature_frequency[feature_frequency > 0]
 )
+selected_features_data$mean_0=NA
+selected_features_data$mean_1=NA
+
+for (i in 1:nrow(selected_features_data)) {
+  feature_name <- selected_features_data$Feature[i]
+  j = which(colnames(X)==feature_name)
+  # Compute average for control
+  selected_features_data$mean_0[i] <- mean(as.numeric(X[y == 0, j]))
+  # Compute average for case
+  selected_features_data$mean_1[i] <- mean(as.numeric(X[y == 1, j]))
+}
+
+selected_features_data <- selected_features_data[order(selected_features_data$Frequency, decreasing = T), ]
+
 
 # Write to Excel file
-output_file <- "EN_Lipid_features_50.xlsx"
+output_file <- "EN_Lipid_features_SGA.xlsx"
 write.xlsx(selected_features_data, file = output_file)
+
+
+
+
 
 # Write best alphas to a separate Excel file
 best_alphas_data <- data.frame(
   Trial = 1:n_trials,
   Best_Alpha = best_alphas
 )
-output_file_alphas <- "Best_alphas.xlsx"
+output_file_alphas <- "EN_Best_alphas_SGA.xlsx"
 write.xlsx(best_alphas_data, file = output_file_alphas)

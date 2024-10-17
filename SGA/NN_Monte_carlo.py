@@ -1,5 +1,5 @@
 import os
-os.chdir("/Users/amahzarn/Desktop/oct24/lipids_binary_SGA/")
+os.chdir("/Users/amahzarn/Desktop/oct24/lipids_binary_sga/")
 
 import pandas as pd
 import numpy as np
@@ -9,6 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, roc_curve, auc
 import matplotlib.pyplot as plt
 from tensorflow.keras import layers, models, regularizers
+from scipy import stats
+
 
 # Set random seeds for reproducibility
 np.random.seed(42)  
@@ -21,6 +23,10 @@ data = pd.read_csv('Lipid_mom_SGA.csv')
 data['Multiple.Birth'] = data['Multiple.Birth'].fillna(1)
 bmi_sex_age_cols = ['BMI', 'Sex', 'AgeDelivery', 'GAUltrasound', 'Multiple.Birth']
 X_bmi_sex_age = data[bmi_sex_age_cols].values  # Features we don't want to penalize
+# Assuming X_bmi_sex_age is a NumPy array
+X_bmi_sex_age = pd.DataFrame(X_bmi_sex_age, columns=bmi_sex_age_cols)
+# Convert 'Sex' and 'multi_birth' into dummy variables
+X_bmi_sex_age = pd.get_dummies(X_bmi_sex_age, columns=['Sex', 'Multiple.Birth'], drop_first=True)
 
 # Select remaining features (from column 11 to the last column, excluding target column)
 X_rest = data.iloc[:, 10:-1].values  # Regular features to be penalized
@@ -53,7 +59,12 @@ def create_model(input_shape_rest, input_shape_non_penalized):
     inputs_non_penalized = layers.Input(shape=input_shape_non_penalized)  # Non-penalized features
 
     # Penalized features go through Dense layers with regularization
-    x = layers.Dense(256, activation='relu', kernel_regularizer=regularizers.l2(0.01))(inputs_rest)  
+   
+    x = layers.Dense(512, activation='relu', kernel_regularizer=regularizers.l2(0.01))(inputs_rest)  
+    x = layers.Dropout(0.5)(x)  
+    
+    
+    x = layers.Dense(256, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x)  
     x = layers.Dropout(0.5)(x)  
     
     x = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x)  
@@ -77,7 +88,7 @@ def create_model(input_shape_rest, input_shape_non_penalized):
 
 
 # Number of trials
-n_trials = 1000
+n_trials = 100
 auc_scores = []
 
 
@@ -139,3 +150,27 @@ ci_high = np.percentile(auc_scores, 97.5)
 # Report the results
 print(f"Mean AUC over {n_trials} trials: {mean_auc:.4f}")
 print(f"95% Confidence Interval for AUC: ({ci_low:.4f}, {ci_high:.4f})")
+
+
+
+
+# Calculate the mean and standard deviation of AUC scores
+mean_auc = np.mean(auc_scores)
+std_auc = np.std(auc_scores, ddof=1)  # Use ddof=1 for sample standard deviation
+
+# Number of trials
+n_trials = len(auc_scores)
+
+# Compute the Z-critical value for a 95% confidence interval (Z_critical = 1.96)
+z_critical = stats.norm.ppf(0.975)
+
+# Compute the margin of error
+margin_of_error = z_critical * (std_auc / np.sqrt(n_trials))
+
+# Compute the confidence interval
+ci_low = mean_auc - margin_of_error
+ci_high = mean_auc + margin_of_error
+
+# Report the results
+print(f"Mean AUC over {n_trials} trials: {mean_auc:.4f}")
+print(f"95% Confidence Interval for AUC (Z-interval): ({ci_low:.4f}, {ci_high:.4f})")
