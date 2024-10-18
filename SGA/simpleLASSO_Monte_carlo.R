@@ -36,7 +36,8 @@ set.seed(234) # for consistency in train and test set selection
 
 for (trial in 1:n_trials) {
   train.index = sample(1:length(y), size = floor(length(y) * 0.8), replace = FALSE)
-  
+  if (any(apply(X[train.index, ], 2, var))) {train.index = sample(1:length(y), size = floor(length(y) * 0.8), replace = FALSE)}
+
   # Handle convergence error in cv.glmnet
   cvfit <- NULL
   while (is.null(cvfit)) { 
