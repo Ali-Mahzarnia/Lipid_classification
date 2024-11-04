@@ -96,7 +96,7 @@ auc_scores = []
 for trial in range(n_trials):
     
     # Split the data into training and validation sets (80% for training, 20% for validation)
-    X_rest_train, X_rest_val, X_bmi_sex_age_train, X_bmi_sex_age_val, y_train, y_val = train_test_split( X_rest, X_bmi_sex_age, y, test_size=0.2, random_state=42)
+    X_rest_train, X_rest_val, X_bmi_sex_age_train, X_bmi_sex_age_val, y_train, y_val = train_test_split( X_rest, X_bmi_sex_age, y, test_size=0.2, random_state=trial)
     # Normalize the penalized features (not BMI, Sex, AgeDelivery)
     combined_train = np.concatenate([X_rest_train, X_bmi_sex_age_train], axis=1)
     scaler = StandardScaler()
